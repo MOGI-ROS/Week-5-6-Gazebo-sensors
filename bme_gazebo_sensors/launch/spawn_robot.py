@@ -67,7 +67,7 @@ def generate_launch_description():
         arguments=['-d', os.path.join(pkg_bme_gazebo_sensors, 'rviz', 'rviz.rviz')],
         condition=IfCondition(LaunchConfiguration('rviz')),
         parameters=[
-            {'use_sim_time': True},
+            {'use_sim_time': False},
         ]
     )
 
@@ -80,7 +80,10 @@ def generate_launch_description():
             "-topic", "robot_description",
             "-x", LaunchConfiguration('x'), "-y", LaunchConfiguration('y'), "-z", "0.5", "-Y", LaunchConfiguration('yaw')  # Initial spawn position
         ],
-        output="screen"
+        output="screen",
+        parameters=[
+            {'use_sim_time': True},
+        ]
     )
 
     # Node to bridge /cmd_vel and /odom
@@ -95,11 +98,17 @@ def generate_launch_description():
             "/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
             #"/camera@sensor_msgs/msg/Image@gz.msgs.Image",
             "/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
+            #"/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
+            "scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
+            "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
         ],
         remappings=[
             ("camera_info", "camera/camera_info")
         ],
-        output="screen"
+        output="screen",
+        parameters=[
+            {'use_sim_time': True},
+        ]
     )
 
     # Node to bridge /cmd_vel and /odom
@@ -122,7 +131,10 @@ def generate_launch_description():
         executable='relay',
         name='relay_camera_info',
         output='screen',
-        arguments=['/camera/camera_info', '/camera_info']
+        arguments=['/camera/camera_info', '/camera_info'],
+        parameters=[
+            {'use_sim_time': True},
+        ]
     )
 
     robot_state_publisher_node = Node(
@@ -131,7 +143,8 @@ def generate_launch_description():
         name='robot_state_publisher',
         output='screen',
         parameters=[
-            {'robot_description': Command(['xacro', ' ', urdf_file_path])},
+            {'robot_description': Command(['xacro', ' ', urdf_file_path]),
+             'use_sim_time': True},
         ],
         remappings=[
             ('/tf', 'tf'),
