@@ -20,13 +20,28 @@ def generate_launch_description():
     )
 
     world_arg = DeclareLaunchArgument(
-        'world', default_value='world.sdf',
+        'world', default_value='home.sdf',
         description='Name of the Gazebo world file to load'
     )
 
     model_arg = DeclareLaunchArgument(
         'model', default_value='mogi_bot.urdf',
         description='Name of the URDF description to load'
+    )
+
+    x_arg = DeclareLaunchArgument(
+        'x', default_value='2.5',
+        description='x coordinate of spawned robot'
+    )
+
+    y_arg = DeclareLaunchArgument(
+        'y', default_value='1.5',
+        description='y coordinate of spawned robot'
+    )
+
+    yaw_arg = DeclareLaunchArgument(
+        'yaw', default_value='-1.5707',
+        description='yaw angle of spawned robot'
     )
 
     # Define the path to your URDF or Xacro file
@@ -63,7 +78,7 @@ def generate_launch_description():
         arguments=[
             "-name", "mogi_bot",
             "-topic", "robot_description",
-            "-x", "0.0", "-y", "0.0", "-z", "0.5", "-Y", "0.0"  # Initial spawn position
+            "-x", LaunchConfiguration('x'), "-y", LaunchConfiguration('y'), "-z", "0.5", "-Y", LaunchConfiguration('yaw')  # Initial spawn position
         ],
         output="screen"
     )
@@ -131,6 +146,9 @@ def generate_launch_description():
     launchDescriptionObject.add_action(rviz_launch_arg)
     launchDescriptionObject.add_action(world_arg)
     launchDescriptionObject.add_action(model_arg)
+    launchDescriptionObject.add_action(x_arg)
+    launchDescriptionObject.add_action(y_arg)
+    launchDescriptionObject.add_action(yaw_arg)
     launchDescriptionObject.add_action(world_launch)
     launchDescriptionObject.add_action(rviz_node)
     launchDescriptionObject.add_action(spawn_urdf_node)
