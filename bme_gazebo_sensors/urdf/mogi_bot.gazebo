@@ -67,6 +67,51 @@
     </sensor>
   </gazebo>
 
+
+  <gazebo>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre</render_engine>
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="scan_link">
+    <sensor name="gpu_lidar" type="gpu_lidar">
+      <update_rate>5</update_rate>
+      <topic>scan</topic>
+      <gz_frame_id>scan_link</gz_frame_id>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>720</samples>
+            <!--(max_angle-min_angle)/samples * resolution -->
+            <resolution>1</resolution>
+            <min_angle>-3.14156</min_angle>
+            <max_angle>3.14156</max_angle>
+          </horizontal>
+          <vertical>
+              <samples>3</samples>
+              <min_angle>-0.174533</min_angle>
+              <max_angle>0.174533</max_angle>
+          </vertical>
+        </scan>
+        <range>
+          <min>1.0</min>
+          <max>10.0</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+        </noise>
+        <frame_id>scan_link</frame_id>
+      </ray>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
+    </sensor>
+
+  </gazebo>
+
   <!-- Gazebo links and joints -->
 <!--   <gazebo reference="${name}_rgb_camera_frame">
     <sensor name="rgbd_camera" type="rgbd_camera">
