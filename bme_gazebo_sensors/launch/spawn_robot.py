@@ -109,7 +109,11 @@ def generate_launch_description():
         arguments=[
             "/camera",
         ],
-        output="screen"
+        output="screen",
+        parameters=[
+            {'use_sim_time': True,
+             'camera.compressed.jpeg_quality': 75},
+        ]
     )
 
     # Relay node to republish camera_info to /camera_info
