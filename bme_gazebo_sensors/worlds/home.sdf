@@ -237,20 +237,11 @@
             </plane>
           </geometry>
           <surface>
-            <contact>
-              <collide_bitmask>65535</collide_bitmask>
-              <ode/>
-            </contact>
             <friction>
               <ode>
-                <mu>100</mu>
-                <mu2>50</mu2>
+                <mu>50</mu>
               </ode>
-              <torsional>
-                <ode/>
-              </torsional>
             </friction>
-            <bounce/>
           </surface>
           <max_contacts>10</max_contacts>
         </collision>
