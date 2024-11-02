@@ -95,28 +95,11 @@
       />
     </inertial>
 
-    <collision name='collision'>
+    <collision>
       <origin xyz="0 0 0" rpy="0 1.5707 1.5707"/> 
       <geometry>
         <cylinder radius=".1" length=".05"/>
       </geometry>
-      <surface>
-        <friction>
-          <ode>
-            <mu>1</mu>
-            <mu2>1</mu2>
-            <slip1>0.035</slip1>
-            <slip2>0</slip2>
-            <fdir1>0 0 1</fdir1>
-          </ode>
-          <bullet>
-            <friction>1</friction>
-            <friction2>1</friction2>
-            <rolling_friction>0.1</rolling_friction>
-            <spinning_friction>0.1</spinning_friction>
-          </bullet>
-        </friction>
-      </surface>
     </collision>
 
     <visual name='left_wheel_visual'>
@@ -147,28 +130,11 @@
       />
     </inertial>
 
-    <collision name='collision'>
+    <collision>
       <origin xyz="0 0 0" rpy="0 1.5707 1.5707"/> 
       <geometry>
         <cylinder radius=".1" length=".05"/>
       </geometry>
-      <surface>
-        <friction>
-          <ode>
-            <mu>1</mu>
-            <mu2>1</mu2>
-            <slip1>0.035</slip1>
-            <slip2>0</slip2>
-            <fdir1>0 0 1</fdir1>
-          </ode>
-          <bullet>
-            <friction>1</friction>
-            <friction2>1</friction2>
-            <rolling_friction>0.1</rolling_friction>
-            <spinning_friction>0.1</spinning_friction>
-          </bullet>
-        </friction>
-      </surface>
     </collision>
 
     <visual name='right_wheel_visual'>
