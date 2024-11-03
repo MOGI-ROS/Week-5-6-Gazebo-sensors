@@ -218,6 +218,17 @@
   <link name="camera_link_optical">
   </link>
 
+  <!-- IMU -->
+  <joint name="imu_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="imu_link" />
+  </joint>
+
+  <link name="imu_link">
+  </link>
+
+
   <!-- Lidar -->
   <joint type="fixed" name="scan_joint">
     <origin xyz="0.0 0 0.15" rpy="0 0 0"/>

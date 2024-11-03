@@ -101,6 +101,7 @@ def generate_launch_description():
             #"/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
             "scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
             "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
+            "imu@sensor_msgs/msg/Imu@gz.msgs.IMU"
         ],
         remappings=[
             ("camera_info", "camera/camera_info")
