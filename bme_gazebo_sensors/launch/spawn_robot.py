@@ -67,7 +67,7 @@ def generate_launch_description():
         arguments=['-d', os.path.join(pkg_bme_gazebo_sensors, 'rviz', 'rviz.rviz')],
         condition=IfCondition(LaunchConfiguration('rviz')),
         parameters=[
-            {'use_sim_time': False},
+            {'use_sim_time': True},
         ]
     )
 
@@ -91,7 +91,7 @@ def generate_launch_description():
         package="ros_gz_bridge",
         executable="parameter_bridge",
         arguments=[
-            #"/clock@rosgraph_msgs/msg/Clock@gz.msgs.Clock",
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
             "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
             "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
             "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
