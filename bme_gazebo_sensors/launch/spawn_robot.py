@@ -44,6 +44,11 @@ def generate_launch_description():
         description='yaw angle of spawned robot'
     )
 
+    sim_time_arg = DeclareLaunchArgument(
+        'use_sim_time', default_value='True',
+        description='Flag to enable use_sim_time'
+    )
+
     # Define the path to your URDF or Xacro file
     urdf_file_path = PathJoinSubstitution([
         pkg_bme_gazebo_sensors,  # Replace with your package name
@@ -67,7 +72,7 @@ def generate_launch_description():
         arguments=['-d', os.path.join(pkg_bme_gazebo_sensors, 'rviz', 'rviz.rviz')],
         condition=IfCondition(LaunchConfiguration('rviz')),
         parameters=[
-            {'use_sim_time': True},
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
         ]
     )
 
@@ -82,7 +87,7 @@ def generate_launch_description():
         ],
         output="screen",
         parameters=[
-            {'use_sim_time': True},
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
         ]
     )
 
@@ -109,7 +114,7 @@ def generate_launch_description():
         ],
         output="screen",
         parameters=[
-            {'use_sim_time': True},
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
         ]
     )
 
@@ -122,7 +127,7 @@ def generate_launch_description():
         ],
         output="screen",
         parameters=[
-            {'use_sim_time': True,
+            {'use_sim_time': LaunchConfiguration('use_sim_time'),
              'camera.compressed.jpeg_quality': 75},
         ]
     )
@@ -135,7 +140,7 @@ def generate_launch_description():
         output='screen',
         arguments=['/camera/camera_info', '/camera_info'],
         parameters=[
-            {'use_sim_time': True},
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
         ]
     )
 
@@ -146,7 +151,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'robot_description': Command(['xacro', ' ', urdf_file_path]),
-             'use_sim_time': True},
+             'use_sim_time': LaunchConfiguration('use_sim_time')},
         ],
         remappings=[
             ('/tf', 'tf'),
@@ -168,6 +173,7 @@ def generate_launch_description():
     launchDescriptionObject.add_action(x_arg)
     launchDescriptionObject.add_action(y_arg)
     launchDescriptionObject.add_action(yaw_arg)
+    launchDescriptionObject.add_action(sim_time_arg)
     launchDescriptionObject.add_action(world_launch)
     launchDescriptionObject.add_action(rviz_node)
     launchDescriptionObject.add_action(spawn_urdf_node)
