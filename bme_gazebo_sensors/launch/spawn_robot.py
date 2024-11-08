@@ -100,10 +100,9 @@ def generate_launch_description():
             "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
             "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
             "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
-            "/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
+            #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
             #"/camera@sensor_msgs/msg/Image@gz.msgs.Image",
             "/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
-            #"/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
             "scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
             "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
             "imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
@@ -165,6 +164,25 @@ def generate_launch_description():
         name='mogi_trajectory_server',
     )
 
+    trajectory_filtered_node = Node(
+        package='mogi_trajectory_server',
+        executable='mogi_trajectory_server',
+        name='mogi_trajectory_server_filtered',
+        parameters=[{'trajectory_topic': 'trajectory_filtered'},
+                    {'odometry_topic': 'odometry/filtered'}]
+    )
+
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[
+            os.path.join(pkg_bme_gazebo_sensors, 'config', 'ekf.yaml'),
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
+             ]
+    )
+
     launchDescriptionObject = LaunchDescription()
 
     launchDescriptionObject.add_action(rviz_launch_arg)
@@ -182,5 +200,7 @@ def generate_launch_description():
     launchDescriptionObject.add_action(relay_camera_info_node)
     launchDescriptionObject.add_action(robot_state_publisher_node)
     launchDescriptionObject.add_action(trajectory_node)
+    launchDescriptionObject.add_action(trajectory_filtered_node)
+    launchDescriptionObject.add_action(ekf_node)
 
     return launchDescriptionObject
