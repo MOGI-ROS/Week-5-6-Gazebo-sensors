@@ -107,6 +107,8 @@ def generate_launch_description():
             "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
             "imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
             "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
+            "/camera_depth@sensor_msgs/msg/Image@gz.msgs.Image",
+            "/camera_depth/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
         ],
         remappings=[
             #("camera_info", "camera_depth/camera_info"),
