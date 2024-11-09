@@ -192,14 +192,14 @@
     <collision name='collision'>
       <origin xyz="0 0 0" rpy="0 0 0"/> 
       <geometry>
-        <box size=".05 .05 .05"/>
+        <box size=".03 .03 .03"/>
       </geometry>
     </collision>
 
     <visual name='camera_link_visual'>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size=".05 .05 .05"/>
+        <box size=".03 .03 .03"/>
       </geometry>
     </visual>
 
