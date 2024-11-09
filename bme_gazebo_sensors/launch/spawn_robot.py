@@ -16,7 +16,12 @@ def generate_launch_description():
 
     rviz_launch_arg = DeclareLaunchArgument(
         'rviz', default_value='true',
-        description='Open RViz.'
+        description='Open RViz'
+    )
+
+    rviz_config_arg = DeclareLaunchArgument(
+        'rviz_config', default_value='rviz.rviz',
+        description='RViz config file'
     )
 
     world_arg = DeclareLaunchArgument(
@@ -69,7 +74,7 @@ def generate_launch_description():
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
-        arguments=['-d', os.path.join(pkg_bme_gazebo_sensors, 'rviz', 'rviz.rviz')],
+        arguments=['-d', PathJoinSubstitution([pkg_bme_gazebo_sensors, 'rviz', LaunchConfiguration('rviz_config')])],
         condition=IfCondition(LaunchConfiguration('rviz')),
         parameters=[
             {'use_sim_time': LaunchConfiguration('use_sim_time')},
@@ -188,6 +193,7 @@ def generate_launch_description():
     launchDescriptionObject = LaunchDescription()
 
     launchDescriptionObject.add_action(rviz_launch_arg)
+    launchDescriptionObject.add_action(rviz_config_arg)
     launchDescriptionObject.add_action(world_arg)
     launchDescriptionObject.add_action(model_arg)
     launchDescriptionObject.add_action(x_arg)
