@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'image_republisher = scripts.image_republisher:main'
+            'image_republisher = bme_gazebo_sensors_py.image_republisher:main',
+            'gps_waypoint_follower = bme_gazebo_sensors_py.gps_waypoint_follower:main',
         ],
     },
 )
