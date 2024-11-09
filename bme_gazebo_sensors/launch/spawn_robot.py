@@ -102,14 +102,14 @@ def generate_launch_description():
             "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
             #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
             #"/camera@sensor_msgs/msg/Image@gz.msgs.Image",
-            "/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
+            "camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
             "scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
             "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
             "imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
-            "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat"
+            "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
         ],
         remappings=[
-            ("camera_info", "camera/camera_info")
+            #("camera_info", "camera_depth/camera_info"),
         ],
         output="screen",
         parameters=[
@@ -128,7 +128,7 @@ def generate_launch_description():
         parameters=[
             {'use_sim_time': LaunchConfiguration('use_sim_time'),
              'camera.compressed.jpeg_quality': 75},
-        ]
+        ],
     )
 
     # Relay node to republish camera_info to /camera_info
@@ -137,7 +137,7 @@ def generate_launch_description():
         executable='relay',
         name='relay_camera_info',
         output='screen',
-        arguments=['/camera/camera_info', '/camera_info'],
+        arguments=['camera_info', 'camera/camera_info'],
         parameters=[
             {'use_sim_time': LaunchConfiguration('use_sim_time')},
         ]
