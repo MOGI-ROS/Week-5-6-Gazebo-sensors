@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'image_republisher = bme_gazebo_sensors_py.image_republisher:main',
             'gps_waypoint_follower = bme_gazebo_sensors_py.gps_waypoint_follower:main',
+            'chase_the_ball = bme_gazebo_sensors_py.chase_the_ball:main',
         ],
     },
 )
