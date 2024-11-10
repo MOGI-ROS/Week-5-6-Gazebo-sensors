@@ -66,12 +66,12 @@
           <stddev>0.007</stddev>
         </noise>
         <optical_frame_id>camera_link_optical</optical_frame_id>
-        <camera_info_topic>camera_info</camera_info_topic>
+        <camera_info_topic>camera/camera_info</camera_info_topic>
       </camera>
       <always_on>1</always_on>
       <update_rate>20</update_rate>
       <visualize>true</visualize>
-      <topic>camera</topic>
+      <topic>camera/image</topic>
     </sensor>
   </gazebo>
 
@@ -102,8 +102,8 @@
           </horizontal>
           <vertical>
               <samples>3</samples>
-              <min_angle>-0.174533</min_angle>
-              <max_angle>0.174533</max_angle>
+              <min_angle>-0.001</min_angle>
+              <max_angle>0.001</max_angle>
           </vertical>
         </scan>
         <range>
