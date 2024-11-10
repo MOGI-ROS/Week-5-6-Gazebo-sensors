@@ -34,17 +34,20 @@ class GPSWaypointFollower(Node):
         self.pitch = 0
         self.yaw = 0
 
+        #<latitude_deg>47.478943</latitude_deg>
+        #<longitude_deg>19.057771</longitude_deg>
+
         self.waypoints = [[47.478830, 19.058087],
                          [47.478878, 19.058149],
                          [47.479075, 19.058055],
-                         [47.478957, 19.057763]]
+                         [47.478943, 19.057771]]
         
         self.waypoint_index = 0
 
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         self.gps_subscription = self.create_subscription(NavSatFix, '/navsat', self.navsat_callback, 10)
         self.imu_subscription = self.create_subscription(Imu, '/imu', self.imu_callback, 10)
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer = self.create_timer(0.05, self.timer_callback)
 
     def navsat_callback(self, msg):
         self.latitude = msg.latitude
@@ -67,7 +70,7 @@ class GPSWaypointFollower(Node):
         distance, bearing = haversine(self.latitude, self.longitude, self.waypoints[self.waypoint_index][0], self.waypoints[self.waypoint_index][1])
 
         # calculate heading error from yaw and bearing
-        heading_error = bearing - self.yaw + 1.5707
+        heading_error = bearing - (self.yaw - 1.5707)
                 
         if heading_error > math.pi:
             heading_error = heading_error - (2 * math.pi) 
@@ -75,22 +78,22 @@ class GPSWaypointFollower(Node):
             heading_error = heading_error + (2 * math.pi)
        
         #rospy.loginfo("Distance: %.3f m, heading error: %.3f rad." % (distance, heading_error))
-        self.get_logger().info(f'Distance: {distance} m, heading error: {heading_error}')
+        self.get_logger().info(f'Distance: {distance:.2f} m, heading error: {heading_error:.3f}')
         #rospy.loginfo("Bearing: %.3f rad, yaw: %.3f rad, error: %.3f rad" % (bearing, yaw, headingError))
 
-        # Heading error, threshold is 0.1 rad
-        if abs(heading_error) > 0.05:
+        # Heading error, threshold is 0.03 rad
+        if abs(heading_error) > 0.03:
             # Only rotate in place if there is any heading error
             msg.linear.x = 0.0
 
             if heading_error < 0:
-                msg.angular.z = -0.2
+                msg.angular.z = -0.3
             else:
-                msg.angular.z = 0.2
+                msg.angular.z = 0.3
         else:
             # Only straight driving, no curves
             msg.angular.z = 0.0
-            # Distance error, threshold is 0.2m
+            # Distance error, threshold is 0.3m
             if distance > 0.3:
                 msg.linear.x = 0.5
             else:
