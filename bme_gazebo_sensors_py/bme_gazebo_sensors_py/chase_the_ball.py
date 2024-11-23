@@ -5,6 +5,7 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
 import cv2
 import numpy as np
+import threading
 
 class ImageSubscriber(Node):
     def __init__(self):
@@ -25,13 +26,28 @@ class ImageSubscriber(Node):
         
         # Variable to store the latest frame
         self.latest_frame = None
+        self.frame_lock = threading.Lock()  # Lock to ensure thread safety
+        
+        # Flag to control the display loop
+        self.running = True
+
+        # Start a separate thread for spinning (to ensure image_callback keeps receiving new frames)
+        self.spin_thread = threading.Thread(target=self.spin_thread_func)
+        self.spin_thread.start()
+
+    def spin_thread_func(self):
+        """Separate thread function for rclpy spinning."""
+        while rclpy.ok() and self.running:
+            rclpy.spin_once(self, timeout_sec=0.05)
 
     def image_callback(self, msg):
-        # Convert ROS Image message to OpenCV format
-        self.latest_frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        """Callback function to receive and store the latest frame."""
+        # Convert ROS Image message to OpenCV format and store it
+        with self.frame_lock:
+            self.latest_frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 
     def display_image(self):
-
+        """Main loop to process and display the latest frame."""
         # Create a single OpenCV window
         cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("frame", 800,600)
@@ -52,16 +68,15 @@ class ImageSubscriber(Node):
 
             # Check for quit key
             if cv2.waitKey(1) & 0xFF == ord('q'):
+                self.running = False
                 break
-
-            # Spin once to handle ROS 2 callbacks
-            rclpy.spin_once(self, timeout_sec=0.1)
 
         # Close OpenCV window after quitting
         cv2.destroyAllWindows()
+        self.running = False
 
     def process_image(self, img):
-
+        """Image processing task."""
         msg = Twist()
         msg.linear.x = 0.0
         msg.linear.y = 0.0
@@ -161,16 +176,22 @@ class ImageSubscriber(Node):
             x_offset += size[0] + x_base_offset
 
         return img
+    
+    def stop(self):
+        """Stop the node and the spin thread."""
+        self.running = False
+        self.spin_thread.join()
 
 def main(args=None):
     rclpy.init(args=args)
     node = ImageSubscriber()
     
     try:
-        node.display_image()  # Display the OpenCV window
+        node.display_image()  # Run the display loop
     except KeyboardInterrupt:
         pass
     finally:
+        node.stop()  # Ensure the spin thread and node stop properly
         node.destroy_node()
         rclpy.shutdown()
 
