@@ -34,20 +34,16 @@ class GPSWaypointFollower(Node):
         self.pitch = 0
         self.yaw = 0
 
-        #<latitude_deg>47.478943</latitude_deg>
-        #<longitude_deg>19.057771</longitude_deg>
-
         self.waypoints = [[47.478830, 19.058087],
                          [47.478878, 19.058149],
                          [47.479075, 19.058055],
-                         [47.478943, 19.057771]]
+                         [47.478950, 19.057785]]
         
         self.waypoint_index = 0
 
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         self.gps_subscription = self.create_subscription(NavSatFix, '/navsat', self.navsat_callback, 10)
         self.imu_subscription = self.create_subscription(Imu, '/imu', self.imu_callback, 10)
-        self.timer = self.create_timer(0.05, self.timer_callback)
 
     def navsat_callback(self, msg):
         self.latitude = msg.latitude
@@ -58,7 +54,7 @@ class GPSWaypointFollower(Node):
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
         (self.roll, self.pitch, self.yaw) = euler_from_quaternion (orientation_list)
 
-    def timer_callback(self):
+    def waypoint_follower(self):
         msg = Twist()
         msg.linear.x = 0.0
         msg.linear.y = 0.0
@@ -67,54 +63,64 @@ class GPSWaypointFollower(Node):
         msg.angular.y = 0.0
         msg.angular.z = 0.0
 
-        distance, bearing = haversine(self.latitude, self.longitude, self.waypoints[self.waypoint_index][0], self.waypoints[self.waypoint_index][1])
+        while rclpy.ok():
 
-        # calculate heading error from yaw and bearing
-        heading_error = bearing - (self.yaw - 1.5707)
-                
-        if heading_error > math.pi:
-            heading_error = heading_error - (2 * math.pi) 
-        if heading_error < -math.pi:
-            heading_error = heading_error + (2 * math.pi)
-       
-        #rospy.loginfo("Distance: %.3f m, heading error: %.3f rad." % (distance, heading_error))
-        self.get_logger().info(f'Distance: {distance:.2f} m, heading error: {heading_error:.3f}')
-        #rospy.loginfo("Bearing: %.3f rad, yaw: %.3f rad, error: %.3f rad" % (bearing, yaw, headingError))
+            distance, bearing = haversine(self.latitude, self.longitude, self.waypoints[self.waypoint_index][0], self.waypoints[self.waypoint_index][1])
 
-        # Heading error, threshold is 0.03 rad
-        if abs(heading_error) > 0.03:
-            # Only rotate in place if there is any heading error
-            msg.linear.x = 0.0
+            # calculate heading error from yaw and bearing
+            heading_error = bearing - (self.yaw - 1.5707)
+                    
+            if heading_error > math.pi:
+                heading_error = heading_error - (2 * math.pi) 
+            if heading_error < -math.pi:
+                heading_error = heading_error + (2 * math.pi)
+        
+            #rospy.loginfo("Distance: %.3f m, heading error: %.3f rad." % (distance, heading_error))
+            self.get_logger().info(f'Distance: {distance:.2f} m, heading error: {heading_error:.3f}')
+            #rospy.loginfo("Bearing: %.3f rad, yaw: %.3f rad, error: %.3f rad" % (bearing, yaw, headingError))
 
-            if heading_error < 0:
-                msg.angular.z = -0.3
-            else:
-                msg.angular.z = 0.3
-        else:
-            # Only straight driving, no curves
-            msg.angular.z = 0.0
-            # Distance error, threshold is 0.3m
-            if distance > 0.3:
-                msg.linear.x = 0.5
-            else:
+            # Heading error, threshold is 0.03 rad
+            if abs(heading_error) > 0.03:
+                # Only rotate in place if there is any heading error
                 msg.linear.x = 0.0
-                self.get_logger().info("Target waypoint reached!")
-                self.waypoint_index += 1
 
-        #self.get_logger().info(f'Publishing cmd_vel: linear.x={msg.linear.x}, angular.z={msg.angular.z}')
-        self.publisher.publish(msg)
+                if heading_error < 0:
+                    msg.angular.z = -0.3
+                else:
+                    msg.angular.z = 0.3
+            else:
+                # Only straight driving, no curves
+                msg.angular.z = 0.0
+                # Distance error, threshold is 0.3m
+                if distance > 0.3:
+                    msg.linear.x = 0.5
+                else:
+                    msg.linear.x = 0.0
+                    self.get_logger().info("Target waypoint reached!")
+                    self.waypoint_index += 1
 
-        if self.waypoint_index == len(self.waypoints):
-            self.get_logger().info("Last target waypoint reached!")
-            rclpy.shutdown()
+            #self.get_logger().info(f'Publishing cmd_vel: linear.x={msg.linear.x}, angular.z={msg.angular.z}')
+            self.publisher.publish(msg)
+
+            if self.waypoint_index == len(self.waypoints):
+                self.get_logger().info("Last target waypoint reached!")
+                break
+            else:
+                # Spin once to handle ROS 2 callbacks
+                rclpy.spin_once(self, timeout_sec=0.05)
         
 
 def main(args=None):
     rclpy.init(args=args)
     node = GPSWaypointFollower()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+
+    try:
+        node.waypoint_follower()  # Follow waypoints
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
