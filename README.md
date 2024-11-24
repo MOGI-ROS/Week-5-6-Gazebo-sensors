@@ -1,5 +1,11 @@
 # Week-5-6-Gazebo-sensors
 
+sudo apt install ros-jazzy-topic-tools
+
+sudo apt install ros-jazzy-rviz-imu-plugin
+sudo apt install ros-jazzy-rviz-satellite
+
+
 relay camera info topic:
 sudo apt install ros-jazzy-topic-tools
 
@@ -28,7 +34,7 @@ WORLD plugin!!!!
 
 sudo apt install ros-jazzy-tf-transformations
 
-ros2 launch bme_gazebo_sensors spawn_robot.py world:=empty.sdf rviz_config:=gps.rviz x:=0.0 y:=0.0 yaw:=0.0
+ros2 launch bme_gazebo_sensors spawn_robot.launch.py world:=empty.sdf rviz_config:=gps.rviz x:=0.0 y:=0.0 yaw:=0.0
 
 
 EKF:
