@@ -63,7 +63,7 @@ def generate_launch_description():
 
     world_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_bme_gazebo_sensors, 'launch', 'world.py'),
+            os.path.join(pkg_bme_gazebo_sensors, 'launch', 'world.launch.py'),
         ),
         launch_arguments={
         'world': LaunchConfiguration('world'),
