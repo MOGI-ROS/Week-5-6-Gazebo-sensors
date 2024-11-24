@@ -73,11 +73,6 @@
     </sensor>
   </gazebo>
 
-
-
-
-
-
   <gazebo reference="camera_link">
     <sensor name="depth_camera" type="depth_camera">
       <camera>
