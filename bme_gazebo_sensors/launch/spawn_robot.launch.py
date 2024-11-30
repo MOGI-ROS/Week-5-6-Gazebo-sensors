@@ -124,7 +124,7 @@ def generate_launch_description():
         ]
     )
 
-    # Node to bridge /cmd_vel and /odom
+    # Node to bridge camera image with image_transport and compressed_image_transport
     gz_image_bridge_node = Node(
         package="ros_gz_image",
         executable="image_bridge",
