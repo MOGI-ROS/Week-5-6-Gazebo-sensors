@@ -1,10 +1,54 @@
-# Week-5-6-Gazebo-sensors
+[//]: # (Image References)
+
+[image1]: ./assets/gazebo.png "Shapes.sdf"
+[image2]: ./assets/gazebo-1.png "Gazebo GUI"
+[image3]: ./assets/gazebo-2.png "Gazebo models"
+
+
+# Week 5-6: Gazebo sensors
+
+## This is how far we will get by the end of this lesson: 
+  <a href="https://youtu.be/0Xokl5dHRoQ"><img width="600" src="./assets/youtube-gazebo.png"></a>  
+
+  <a href="https://youtu.be/ELwRqeNR_NA"><img width="600" src="./assets/youtube-gazebo-1.png"></a>  
+
+
+# Table of Contents
+1. [Download ROS package](#download-ros-package)
+2. [Camera](#install-gazebo)  
+2.1. [Image transport](#diff-drive-plugin)  
+2.2. [rqt reconfigure](#diff-drive-plugin)  
+2.3. [Wide angle camera](#diff-drive-plugin) 
+3. [IMU](#download-ros-package)  
+4. [GPS](#creating-a-gazebo-world)  
+4.1. [Haversine formula](#diff-drive-plugin)  
+4.2. [GPS waypoint following](#diff-drive-plugin) 
+5. [Lidar](#urdf)  
+5.1. [3D lidar](#diff-drive-plugin) 
+6. [RGBD camera](#gazebo-integration)  
+7. [Image processing with OpenCV](#3d-models)  
+
+
+# Download ROS package
+
+
+
+
+---
+
+
+
+
+
 
 sudo apt install ros-jazzy-topic-tools
 
 sudo apt install ros-jazzy-rviz-imu-plugin
 sudo apt install ros-jazzy-rviz-satellite
 
+
+GZ examples:
+https://github.com/gazebosim/gz-sim/tree/gz-sim8/examples/worlds
 
 relay camera info topic:
 sudo apt install ros-jazzy-topic-tools
