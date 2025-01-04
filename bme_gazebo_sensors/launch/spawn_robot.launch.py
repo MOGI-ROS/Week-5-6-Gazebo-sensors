@@ -168,15 +168,15 @@ def generate_launch_description():
     trajectory_node = Node(
         package='mogi_trajectory_server',
         executable='mogi_trajectory_server',
-        name='mogi_trajectory_server',
+        name='mogi_trajectory_server_filtered'
     )
 
-    trajectory_filtered_node = Node(
+    trajectory_odom_topic_node = Node(
         package='mogi_trajectory_server',
-        executable='mogi_trajectory_server',
-        name='mogi_trajectory_server_filtered',
-        parameters=[{'trajectory_topic': 'trajectory_filtered'},
-                    {'odometry_topic': 'odometry/filtered'}]
+        executable='mogi_trajectory_server_topic_based',
+        name='mogi_trajectory_server_odom_topic',
+        parameters=[{'trajectory_topic': 'trajectory_raw'},
+                    {'odometry_topic': 'odom'}]
     )
 
     ekf_node = Node(
@@ -208,7 +208,7 @@ def generate_launch_description():
     launchDescriptionObject.add_action(relay_camera_info_node)
     launchDescriptionObject.add_action(robot_state_publisher_node)
     launchDescriptionObject.add_action(trajectory_node)
-    launchDescriptionObject.add_action(trajectory_filtered_node)
+    launchDescriptionObject.add_action(trajectory_odom_topic_node)
     launchDescriptionObject.add_action(ekf_node)
 
     return launchDescriptionObject
