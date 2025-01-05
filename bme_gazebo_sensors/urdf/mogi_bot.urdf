@@ -2,15 +2,16 @@
 
 <robot name="mogi_bot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <!-- STEP 3 - Gazebo plugin -->
+  <!-- STEP 5 - Gazebo plugin -->
   <xacro:include filename="$(find bme_gazebo_sensors)/urdf/mogi_bot.gazebo" />
 
   <!-- STEP 4 - RViz colors -->
   <xacro:include filename="$(find bme_gazebo_sensors)/urdf/materials.xacro" />
 
-  <!-- STEP 1 - Robot chassis -->
+  <!-- STEP 1 - Robot footprint -->
   <link name="base_footprint"></link>
 
+  <!-- STEP 2 - Robot chassis = base_link -->
   <joint name="base_footprint_joint" type="fixed">
     <origin xyz="0 0 0" rpy="0 0 0" />
     <parent link="base_footprint"/>
@@ -74,7 +75,7 @@
 
   </link>
 
-  <!-- STEP 2 - Wheels -->
+  <!-- STEP 3 - Wheels -->
   <joint type="continuous" name="left_wheel_joint">
     <origin xyz="0 0.15 0" rpy="0 0 0"/>
     <child link="left_wheel"/>
@@ -145,7 +146,7 @@
     </visual>
   </link>
 
-  <!-- STEP 4 - Gazebo frictions and colors -->
+  <!-- STEP 6 - Gazebo frictions and colors -->
   <gazebo reference="left_wheel">
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
@@ -169,7 +170,7 @@
     <mu2>0.000002</mu2>
   </gazebo>
 
-  <!-- Camera -->
+  <!-- STEP 7 - Camera -->
   <joint type="fixed" name="camera_joint">
     <origin xyz="0.225 0 0.075" rpy="0 0 0"/>
     <child link="camera_link"/>
@@ -218,7 +219,7 @@
   <link name="camera_link_optical">
   </link>
 
-  <!-- IMU -->
+  <!-- STEP 8 - IMU -->
   <joint name="imu_joint" type="fixed">
     <origin xyz="0 0 0" rpy="0 0 0" />
     <parent link="base_link"/>
@@ -229,7 +230,7 @@
   </link>
 
 
-  <!-- Lidar -->
+  <!-- STEP 9 - Lidar -->
   <joint type="fixed" name="scan_joint">
     <origin xyz="0.0 0 0.15" rpy="0 0 0"/>
     <child link="scan_link"/>
