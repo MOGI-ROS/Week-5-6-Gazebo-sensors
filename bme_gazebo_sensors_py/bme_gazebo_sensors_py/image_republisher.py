@@ -11,12 +11,12 @@ class ImageRePublisher(Node):
         self.new_frame_id = self.get_parameter('new_frame_id').get_parameter_value().string_value
 
         # Publisher for the modified Image
-        self.publisher = self.create_publisher(Image, '/camera_fixed', 10)
+        self.publisher = self.create_publisher(Image, '/camera/image_fix', 10)
         
         # Subscriber to the original Image topic
         self.subscription = self.create_subscription(
             Image,
-            '/camera',  # Original topic
+            '/camera/image',  # Original topic
             self.image_callback,
             10
         )
