@@ -106,7 +106,7 @@ def generate_launch_description():
             "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
             "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
             #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
-            #"/camera@sensor_msgs/msg/Image@gz.msgs.Image",
+            #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
             "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
             "scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
             "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
@@ -138,7 +138,7 @@ def generate_launch_description():
         ],
     )
 
-    # Relay node to republish camera_info to /camera_info
+    # Relay node to republish /camera/camera_info to /camera/image/camera_info
     relay_camera_info_node = Node(
         package='topic_tools',
         executable='relay',
@@ -168,7 +168,7 @@ def generate_launch_description():
     trajectory_node = Node(
         package='mogi_trajectory_server',
         executable='mogi_trajectory_server',
-        name='mogi_trajectory_server_filtered'
+        name='mogi_trajectory_server'
     )
 
     trajectory_odom_topic_node = Node(
