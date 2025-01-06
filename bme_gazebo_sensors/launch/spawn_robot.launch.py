@@ -108,15 +108,12 @@ def generate_launch_description():
             #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
             #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
             "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
-            "scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
-            "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
-            "imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
+            "/imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
             "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
+            "/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
+            "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
             "/camera/depth_image@sensor_msgs/msg/Image@gz.msgs.Image",
             "/camera/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
-        ],
-        remappings=[
-            #("camera_info", "camera_depth/camera_info"),
         ],
         output="screen",
         parameters=[
@@ -171,14 +168,6 @@ def generate_launch_description():
         name='mogi_trajectory_server'
     )
 
-    trajectory_odom_topic_node = Node(
-        package='mogi_trajectory_server',
-        executable='mogi_trajectory_server_topic_based',
-        name='mogi_trajectory_server_odom_topic',
-        parameters=[{'trajectory_topic': 'trajectory_raw'},
-                    {'odometry_topic': 'odom'}]
-    )
-
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
@@ -188,6 +177,14 @@ def generate_launch_description():
             os.path.join(pkg_bme_gazebo_sensors, 'config', 'ekf.yaml'),
             {'use_sim_time': LaunchConfiguration('use_sim_time')},
              ]
+    )
+
+    trajectory_odom_topic_node = Node(
+        package='mogi_trajectory_server',
+        executable='mogi_trajectory_server_topic_based',
+        name='mogi_trajectory_server_odom_topic',
+        parameters=[{'trajectory_topic': 'trajectory_raw'},
+                    {'odometry_topic': 'odom'}]
     )
 
     launchDescriptionObject = LaunchDescription()
@@ -208,7 +205,7 @@ def generate_launch_description():
     launchDescriptionObject.add_action(relay_camera_info_node)
     launchDescriptionObject.add_action(robot_state_publisher_node)
     launchDescriptionObject.add_action(trajectory_node)
-    launchDescriptionObject.add_action(trajectory_odom_topic_node)
     launchDescriptionObject.add_action(ekf_node)
+    launchDescriptionObject.add_action(trajectory_odom_topic_node)
 
     return launchDescriptionObject
