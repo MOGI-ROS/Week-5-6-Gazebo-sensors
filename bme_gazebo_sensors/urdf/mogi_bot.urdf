@@ -229,8 +229,17 @@
   <link name="imu_link">
   </link>
 
+  <!-- STEP 9 - GPS -->
+  <joint name="navsat_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="navsat_link" />
+  </joint>
 
-  <!-- STEP 9 - Lidar -->
+  <link name="navsat_link">
+  </link>
+
+  <!-- STEP 10 - Lidar -->
   <joint type="fixed" name="scan_joint">
     <origin xyz="0.0 0 0.15" rpy="0 0 0"/>
     <child link="scan_link"/>
