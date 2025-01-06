@@ -8,6 +8,21 @@
 [image6]: ./assets/rqt-reconfigure.png "rqt reconfigure"
 [image7]: ./assets/wide-angle.png "Wide angle camera"
 [image8]: ./assets/wide-angle-1.png "Wide angle camera"
+[image9]: ./assets/imu.png "IMU"
+[image10]: ./assets/tf-tree.png "TF Tree"
+[image11]: ./assets/odometry.png "Odometry"
+[image12]: ./assets/navsat.png "Navsat"
+[image13]: ./assets/new-york-madrid.png "New York - Madrid"
+[image14]: ./assets/rviz-gps.png "RViz GPS"
+[image15]: ./assets/rviz-gps-1.png "RViz GPS"
+[image16]: ./assets/lidar.png "Lidar"
+[image17]: ./assets/lidar-1.png "Lidar"
+[image18]: ./assets/lidar-2.png "Lidar"
+[image19]: ./assets/3d-lidar.png "Lidar"
+[image20]: ./assets/3d-lidar-1.png "Lidar"
+[image21]: ./assets/rgbd-camera.png "RGBD Camera"
+[image22]: ./assets/depth-cloud.png "RGBD Camera"
+[image23]: ./assets/depth-cloud-1.png "RGBD Camera"
 
 # Week 5-6: Gazebo sensors
 
@@ -27,13 +42,13 @@
 2.3. [Wide angle camera](#wide-angle-camera) 
 3. [IMU](#imu)  
 3.1. [Sensor fusion with ekf](#sensor-fusion-with-ekf)  
-4. [GPS](#creating-a-gazebo-world)  
-4.1. [Haversine formula](#diff-drive-plugin)  
-4.2. [GPS waypoint following](#diff-drive-plugin) 
-5. [Lidar](#urdf)  
-5.1. [3D lidar](#diff-drive-plugin) 
-6. [RGBD camera](#gazebo-integration)  
-7. [Image processing with OpenCV](#3d-models)  
+4. [GPS](#gps)  
+4.1. [Haversine formula](#haversine-formula)  
+4.2. [GPS waypoint following](#gps-waypoint-following) 
+5. [Lidar](#lidar)  
+5.1. [3D lidar](#3d-lidar) 
+6. [RGBD camera](#rgbd-camera)  
+7. [Image processing with OpenCV](#image-processing-with-opencv)  
 
 
 # Introduction
@@ -102,6 +117,7 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 ![alt text][image1]
 
+> In the next chapters we will add various sensors with many different properties, if it's unclear what kind of properties are available for which sensors, the official SDF reference manual is available [on the following link](http://sdformat.org/spec?elem=sensor&ver=1.6).
 
 # Camera
 
@@ -214,6 +230,11 @@ With the above plugin we define a couple of things for Gazebo, let's see the imp
 - `<topic>camera/image</topic>`, we define the camera topic here
 
 We can rebuild the workspace and try our changes, but it will not yet work. The camera's red cube model is visible but the topics aren't available for ROS (we can check it for example with `rqt`)
+
+> It's possible to reload the urdf without restarting the nodes by setting the parameter from the terminal:
+> ```bash
+> ros2 param set /robot_state_publisher robot_description "$(xacro $(ros2 pkg prefix bme_gazebo_sensors)/share/bme_gazebo_sensors/urdf/mogi_bot.urdf)"
+> ```
 
 ![alt text][image2]
 
@@ -429,71 +450,626 @@ ros2 run bme_gazebo_sensors_py image_republisher
 
 # IMU
 
+An Inertial Measurement Unit (IMU) typically consists of a 3-axis accelerometer, 3-axis gyroscope, and sometimes a 3-axis magnetometer. It measures linear acceleration, angular velocity, and possibly magnetic heading (orientation). It's important to remember that it's not possible to measure unform motion with an IMU where the velocity is constant (acceleration is zero) and there is no change in the orientation. Therefore we cannot replace the odometry of the robot with an IMU but with the right technique we can combine these two into a more precise measurement unit.
 
-sudo apt install ros-jazzy-rviz-imu-plugin
+But first, let's add our IMU to the `urdf`:
+```xml
+  <!-- STEP 8 - IMU -->
+  <joint name="imu_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="imu_link" />
+  </joint>
 
-WORLD plugin!!!!
+  <link name="imu_link">
+  </link>
+```
+
+Which is a simple link and a fixed joint in the center of the base link. Let's add the plugin to the `mogi_bot.gazebo` file too:
+
+```xml
+  <gazebo reference="imu_link">
+    <sensor name="imu" type="imu">
+      <always_on>1</always_on>
+      <update_rate>50</update_rate>
+      <visualize>true</visualize>
+      <topic>imu</topic>
+      <enable_metrics>true</enable_metrics>
+      <gz_frame_id>imu_link</gz_frame_id>
+    </sensor>
+  </gazebo>
+```
+
+With adding the IMU we aren't done yet, with the new Gazebo we also have to make sure that our simulated world has the right plugins within its `<world>` tag. In this lesson I already added the plugins to each world files, but if you use your won custom made world, don't forget to add the plugins!
+
+```xml
+    <plugin
+      filename="gz-sim-imu-system"
+      name="gz::sim::systems::Imu">
+    </plugin>
+```
+
+Before we try it out we also have to bridge the topics from Gazebo towards ROS using the `parameter_bridge`. Let's add the `imu` topic - or what we defined as `<topic>` in the Gazebo plugin - to the parameter bridge, rebuild the workspace and we are ready to test it!
+
+> To properly visualize IMU in RViz install the following plugin: `sudo apt install ros-jazzy-rviz-imu-plugin`
+
+```python
+    # Node to bridge /cmd_vel and /odom
+    gz_bridge_node = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
+            "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
+            "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
+            "/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
+            #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
+            "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
+            "imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
+        ],
+        output="screen",
+        parameters=[
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
+        ]
+    )
+```
+
+```bash
+ros2 launch bme_gazebo_sensors spawn_robot.launch.py
+```
+
+![alt text][image9]
 
 ## Sensor fusion with ekf
 
-EKF:
+Sensor fusion is the process of combining data from multiple sensors (possibly of different types) to obtain a more accurate or more complete understanding of a system or environment than could be achieved by using the sensors separately. By merging redundant and complementary information, sensor fusion reduces uncertainty, mitigates individual sensor errors, and provides robust state estimates (e.g., position, velocity, orientation).
+
+A Kalman Filter (KF) is a mathematical algorithm that estimates the internal state of a system (e.g., position, velocity) based on noisy measurements and a predictive model of how the system behaves. The standard (linear) Kalman Filter assumes the system dynamics (state transitions) and measurement models are linear.
+
+Real-world systems—especially those involving orientation, rotations, or non-linear sensor models (e.g., fusing IMU acceleration, odometry, GPS position, magnetometer) often do not follow purely linear equations. That’s where the Extended Kalman Filter (EKF) comes in. It's a widely used sensor fusion algorithm that handles non-linear system and measurement models by locally linearizing them. Luckily we don't have to bother too much about its implementation in this lesson because we'll use a package that is widely used in robotics applications for years around the world. It's the [robot localization package](https://docs.ros.org/en/melodic/api/robot_localization/html/index.html) that you can install with the following command:
+```bash
 sudo apt install ros-jazzy-robot-localization
+```
 
-To see who is the publisher:
-ros2 topic info /odom --verbose
+To configure `robot_localization` package can be tricky in the beginning, but I already created a config yaml file in the `config` folder based on the official guidelines that will do the job in this lesson. Important to notice that `robot_localization` will publish a filtered odometry topic and also a transformation between the robot's `base_link` and this improved odometry coordinate system.
 
----
+From the `rqt_tf_tree` tool we cannot tell which node is broadcasting the TF:
+![alt text][image10]
+> Run `rqt_tf_tree` with the following command: `ros2 run rqt_tf_tree rqt_tf_tree`
+
+But we can take a look into the `/tf` topic which nodes are publishing:
+`ros2 topic info /tf --verbose`
+
+And we will see 2 publisher nodes, the `ros_gz_bridge` and the `robot_state_publisher` as we expected.
+
+Since a robot cannot have 2 odomnetry transformation we have to stop Gazebo doing it. The easiest way is simply not bridging it anymore with the `parameter_bridge`.
+
+```python
+    # Node to bridge /cmd_vel and /odom
+    gz_bridge_node = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
+            "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
+            "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
+            #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
+            #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
+            "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
+            "imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
+        ],
+        output="screen",
+        parameters=[
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
+        ]
+    )
+```
+
+And then let's add the `robot_localization` to the launch file:
+
+```python
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[
+            os.path.join(pkg_bme_gazebo_sensors, 'config', 'ekf.yaml'),
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
+             ]
+    )
+```
+
+And of course, add the new node to the `launchDescription` object:
+
+```python
+launchDescriptionObject.add_action(ekf_node)
+```
+
+Rebuild the workspace and let's try it out!
+
+```bash
+ros2 launch bme_gazebo_sensors spawn_robot.launch.py
+```
+
+As we expected the `tf_tree` looks the same, but if we check the publishers of the `/tf` we'll see the following nodes: `ekf_filter_node` and `robot_state_publisher`. We can also see that there is a `/odometry/filtered` topic published by the `ekf_filter_node`.
+
+But how could we validate that odometry is improved with adding the ekf sensor fusion? We can use the `mogi_trajectory_server` package for that. By default the trajectory server gets its data from the `/tf` but there is another node in the package that can subscribe to the original `/odom` topic which is basically identical to the old transformation between the `base_link` and `odom` frame. Let's add it to the launch file:
+
+```python
+    trajectory_odom_topic_node = Node(
+        package='mogi_trajectory_server',
+        executable='mogi_trajectory_server_topic_based',
+        name='mogi_trajectory_server_odom_topic',
+        parameters=[{'trajectory_topic': 'trajectory_raw'},
+                    {'odometry_topic': 'odom'}]
+    )
+```
+
+Also add it to the `launchDescription`:
+
+```python
+launchDescriptionObject.add_action(trajectory_odom_topic_node)
+```
+
+Rebuild the workspace, restart the simulation and let's see the 2 trajectories in RViz:
+![alt text][image11]
+
+We can see that the yellow (raw) odometry starts drifting away from the corrected one very quickly and we can easily bring the robot into a special situation if we drive on a curve and hit the wall. In this case the robot is unable to move and the wheels are slipping. The raw odometry believes from the encoder signals that the robot is still moving on a curve while the odometry after the ekf sensor fusion will believe that the robot moves forward straight. Although none of them are correct, but remember, neither the IMU and neither the odometry can tell if the robot is doing an uniform movement or it's stand still. At least the ekf is able to properly tell that the robot's orientation is not changing regardless what the encoders measure.
 
 
+# GPS
+
+Just as we did for the GPS we add another simple link and joint for the simulated GPS in the `urdf`:
+```xml
+  <!-- STEP 9 - GPS -->
+  <joint name="navsat_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="navsat_link" />
+  </joint>
+
+  <link name="navsat_link">
+  </link>
+```
+
+And we add the Gazebo plugin:
+
+```xml
+  <gazebo reference="navsat_link">
+    <sensor name="navsat" type="navsat">
+      <always_on>1</always_on>
+      <update_rate>1</update_rate>
+      <topic>navsat</topic>
+      <gz_frame_id>navsat_link</gz_frame_id>
+    </sensor>
+  </gazebo>
+```
+
+We also have to add a plugin the worlds we use similarly to the IMU and furthermore we have to define what is the latitude and longitude of the centerpoint of the simulated world.
+
+```xml
+    <plugin
+      filename="gz-sim-navsat-system"
+      name="gz::sim::systems::NavSat">
+    </plugin>
+    <!-- Set the coordinates for the world origin -->
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <world_frame_orientation>ENU</world_frame_orientation>
+      <latitude_deg>47.478950</latitude_deg>
+      <longitude_deg>19.057785</longitude_deg>
+      <elevation>0</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
+```
+
+When all of these are done, we have to still extend the topic forwarding in the `parameter_bridge`:
+
+```python
+    # Node to bridge /cmd_vel and /odom
+    gz_bridge_node = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
+            "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
+            "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
+            #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
+            #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
+            "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
+            "imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
+            "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
+        ],
+        output="screen",
+        parameters=[
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
+        ]
+    )
+```
+
+Let's rebuild the workspace and check the `navsat` topic.
+![alt text][image12]
+
+But what can we do with this simulated GPS?
+
+## Haversine formula
+Before we can move forward to practical application we have to learn the haversine formula. It is used to calculate the great-circle distance between two points on a sphere (e.g. the Earth) from their latitudes and longitudes. It accounts for the spherical shape of the planet, making it more accurate than simple Euclidean distance formulas when dealing with geographical coordinates. By using half-angle trigonometric functions, it avoids numerical issues for small distances and is thus a popular choice in navigation and mapping applications.
+
+The haversine formula results in a distance and bearing between 2 points on the sphere, where the bearing is measured clockwise from north. 0° bearing corresponds to North, 90° bearing corresponds to East, etc.
+
+Let's see the haversine formula implemented in python and we can try it with a few different cities:
+
+```python
+#!/usr/bin/env python3
+
+import math
+
+def haversine(lat1_deg, lon1_deg, lat2_deg, lon2_deg):
+    # 0. Radius of earth in km
+    R = 6378.137
+    # 1. Convert from degrees to radians
+    lat1 = math.radians(lat1_deg)
+    lon1 = math.radians(lon1_deg)
+    lat2 = math.radians(lat2_deg)
+    lon2 = math.radians(lon2_deg)
+
+    # 2. Haversine formula for distance
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+    distance_km = R * c
+
+    # 3. Initial bearing calculation (forward azimuth)
+    y = math.sin(dlon) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    bearing_rad = math.atan2(y, x)  # range -π to +π
+
+    # 4. Convert to degrees [0, 360)
+    bearing_deg = math.degrees(bearing_rad)
+    bearing_deg = (bearing_deg + 360) % 360  # normalize
+
+    return distance_km, bearing_deg
+
+# (latitude, longitude)
+new_york   = (40.66964055858272,  -73.2918438988026)
+montreal   = (45.499155994690476, -73.5187471087869)
+madrid     = (40.42545972472332, -3.577711461862623)
+glasgow    = (55.86725614373743,  -4.22935951146214)
+copenhagen = (55.711247305054904, 12.585837172964045)
 
 
+print("New York to Montreal: ", haversine(new_york[0],new_york[1],montreal[0],montreal[1]))    # Should be 540 km
+print("New York to Madrid: ", haversine(new_york[0],new_york[1],madrid[0],madrid[1]))          # Should be 5730 km
+print("Glasgow to Madrid: ", haversine(glasgow[0],glasgow[1],madrid[0],madrid[1]))             # Should be 1720 km
+print("Copenhagen to Glasgow: ", haversine(copenhagen[0],copenhagen[1],glasgow[0],glasgow[1])) # Should be 1050 km
+```
+
+The results are the following:
+```python
+$ python haversine_test.py 
+New York to Montreal:  (537.9349305919243, 358.1117237377836)
+New York to Madrid:  (5730.769414305992, 65.87069002082472)
+Glasgow to Madrid:  (1719.634568091304, 178.13731351039723)
+Copenhagen to Glasgow:  (1049.9843791993976, 277.9072459115459)
+```
+
+Which is pretty much what we expected, except the bearing from New York to Madrid. Madrid is just perfectly to the east from New York, but the bearing isn't even close to 90°. Great-circle navigation on a sphere (or ellipsoid) doesn’t always match our intuitive “straight line on a flat map”. Despite New York and Madrid having similar latitudes, the difference in longitude is large (roughly 70° of longitude). To reach Madrid along the shortest path, the great-circle solution will “curve” somewhat. The initial bearing in a great-circle sense is typically northeast (less than 90°), [because you tend to move slightly northward initially](https://www.greatcirclemap.com/globe?fbclid=IwAR06f4ZtxJYeLPikyCc87FomfFToelVzD6-4jrdiYp5RIo4GIQ0a-Vb3MUE&routes=%20JFK-MAD) before you “swing” back southward across the Atlantic. This yields an initial bearing from New York to Madrid around 66° which is noticeably less than 90°.
+
+![alt text][image13]
 
 
+## GPS waypoint following
 
-
+Let's get back to our lesson and navigate through a series of GPS waypoints using the above formula. Before we deep dive into our new node let's make sure that the necessary RViz plugin is installed to show an aerial map in RViz. This plugin can use various map services ([e.g. OpenStreetMap in our case](https://www.openstreetmap.org/search?lat=47.479099&lon=19.057811)), and you can find the details about its setup [on its GitHub page](https://github.com/nobleo/rviz_satellite).
+```bash
 sudo apt install ros-jazzy-rviz-satellite
+```
 
+Let's spawn our robot in an empty world with a different RViz config where the plugin is already configured:
 
-GZ examples:
-https://github.com/gazebosim/gz-sim/tree/gz-sim8/examples/worlds
-
-
-
-
-SDF reference:
-http://sdformat.org/spec?elem=sensor&ver=1.6
-
-
-
-
-
-
-
-
-GPS:
-
-OpenStreetMap
-https://www.openstreetmap.org/search?lat=47.479099&lon=19.057811
-
-
-sudo apt install ros-jazzy-rviz-satellite
-https://github.com/nobleo/rviz_satellite
-
-WORLD plugin!!!!
-
-sudo apt install ros-jazzy-tf-transformations
-
+```bash
 ros2 launch bme_gazebo_sensors spawn_robot.launch.py world:=empty.sdf rviz_config:=gps.rviz x:=0.0 y:=0.0 yaw:=0.0
+```
+
+![alt text][image14]
+
+Let's take a look on the `gps_waypoint_follower.py` which is part of this lesson. It uses the exact same haversine function, but this time we'll use it in meters and radian instead of km and degrees.
+
+To get the yaw angle of the robot we will have to convert the robot's orientation in quaternion into Euler angles. Make sure that the necessary package is installed: `sudo apt install ros-jazzy-tf-transformations`
+```python
+    def imu_callback(self, msg):
+        orientation_q = msg.orientation
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        (self.roll, self.pitch, self.yaw) = euler_from_quaternion (orientation_list)
+```
+
+Also note that the default convention for ROS for rotations around the z-axis follows the right hand rule. Consequently, rotating counterclockwise about the z-axis corresponds to a positive increase in yaw, while rotating clockwise corresponds to a negative yaw change. But bearing is a compass-like convention: 0° at North, increasing when turning clockwise. So we have to make sure that the we convert bearing to the same convention as the robot's yaw angle.
+
+Let's start the node:
+
+```bash
+ros2 run bme_gazebo_sensors_py gps_waypoint_follower
+```
+
+The node will navigate through 4 waypoints and stops after that. 
+
+![alt text][image15]
+
+# Lidar 
+
+LIDAR (an acronym for “Light Detection and Ranging” or “Laser Imaging, Detection, and Ranging”) is a sensing technology that uses laser light to measure distances. LIDAR sensor typically emits pulses of laser light in a scanning pattern (2D or 3D) and measures how long it takes for the light to return after hitting nearby objects. From this, the system computes distances to obstacles or surfaces in the environment. By continuously scanning the surroundings, the LIDAR provides a 2D or 3D map of distances to any objects around the robot. Lidars are simple and important sensors of almost every mobile robot applications, it's widely used in Simultaneous Localization and Mapping (SLAM) algorithms which use LIDAR scans to build a map of the environment in real time while also estimating the robot’s pose (position and orientation) within that map.
+
+First, we start with a simple 2D lidar, let's add it to the urdf:
+
+```xml
+  <!-- STEP 10 - Lidar -->
+  <joint type="fixed" name="scan_joint">
+    <origin xyz="0.0 0 0.15" rpy="0 0 0"/>
+    <child link="scan_link"/>
+    <parent link="base_link"/>
+    <axis xyz="0 1 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name='scan_link'>
+    <inertial>
+      <mass value="1e-5"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia
+          ixx="1e-6" ixy="0" ixz="0"
+          iyy="1e-6" iyz="0"
+          izz="1e-6"
+      />
+    </inertial>
+    <collision name='collision'>
+      <origin xyz="0 0 0" rpy="0 0 0"/> 
+      <geometry>
+        <box size=".1 .1 .1"/>
+      </geometry>
+    </collision>
+
+    <visual name='scan_link_visual'>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename = "package://bme_gazebo_sensors/meshes/lidar.dae"/>
+      </geometry>
+    </visual>
+  </link>
+```
+
+Then add the plugin to the `mogi_bot.gazebo` file:
+
+```xml
+  <gazebo reference="scan_link">
+    <sensor name="gpu_lidar" type="gpu_lidar">
+      <update_rate>10</update_rate>
+      <topic>scan</topic>
+      <gz_frame_id>scan_link</gz_frame_id>
+      <lidar>
+        <scan>
+          <horizontal>
+            <samples>720</samples>
+            <!--(max_angle-min_angle)/samples * resolution -->
+            <resolution>1</resolution>
+            <min_angle>-3.14156</min_angle>
+            <max_angle>3.14156</max_angle>
+          </horizontal>
+          <!-- Dirty hack for fake lidar detections with ogre 1 rendering in VM -->
+          <!-- <vertical>
+              <samples>3</samples>
+              <min_angle>-0.001</min_angle>
+              <max_angle>0.001</max_angle>
+          </vertical> -->
+        </scan>
+        <range>
+          <min>0.05</min>
+          <max>10.0</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+        </noise>
+        <frame_id>scan_link</frame_id>
+      </lidar>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
+    </sensor>
+  </gazebo>
+```
+
+> If you are using OGRE 1 rendering in VM and lidar reading is not properly rendered (it renders only within a small circle around the sensor) you can try to enable 3 vertical samples with very small vertical angles.
+
+Before we can test our lidar we have to update the `parameter_bridge` to forward the lidar scan topic:
+
+```python
+    # Node to bridge /cmd_vel and /odom
+    gz_bridge_node = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
+            "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
+            "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
+            #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
+            #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
+            "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
+            "/imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
+            "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
+            "/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
+        ],
+        output="screen",
+        parameters=[
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
+        ]
+    )
+```
+
+Let's try it in the simulation!
+
+```bash
+ros2 launch bme_gazebo_sensors spawn_robot.launch.py
+```
+
+![alt text][image16]
+
+We can also verify the rendering of lidars in Gazebo with the `Visualize Lidar` tool:
+
+![alt text][image17]
+
+If we increase decay time of the visualization of lidar scans and we drive around the robot we can do a very simple "mapping" of the environment. Although in the next lesson we will see that mapping algorithms are more complicated, usually this a good quick and dirty test on real robots if odometry, lidar scan and the other components are working well together.
+
+![alt text][image18]
+
+## 3D lidar
+
+If we want to simulate a 3D lidar we only have to increase the number of vertical samples together with the minimum and maximum angles. For example the following vertical parameters are matching a Velodyne VLP-32 sensor:
+
+```xml
+          <vertical>
+              <samples>32</samples>
+              <min_angle>-0.5353</min_angle>
+              <max_angle>0.1862</max_angle>
+          </vertical>
+```
+
+To properly visualize a 3D point cloud in RViz we have to forward one more topic with `parameter_bridge`:
+
+```python
+    # Node to bridge /cmd_vel and /odom
+    gz_bridge_node = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
+            "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
+            "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
+            #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
+            #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
+            "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
+            "/imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
+            "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
+            "/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
+            "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
+        ],
+        output="screen",
+        parameters=[
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
+        ]
+    )
+```
+
+```bash
+ros2 launch bme_gazebo_sensors spawn_robot.launch.py
+```
+![alt text][image19]
+
+![alt text][image20]
 
 
+# RGBD Camera
+
+```xml
+  <gazebo reference="camera_link">
+    <sensor name="rgbd_camera" type="rgbd_camera">
+      <camera>
+        <horizontal_fov>1.25</horizontal_fov>
+        <image>
+          <width>320</width>
+          <height>240</height>
+        </image>
+        <clip>
+          <near>0.3</near>
+          <far>15</far>
+        </clip>
+        <optical_frame_id>camera_link_optical</optical_frame_id>
+      </camera>
+      <always_on>1</always_on>
+      <update_rate>20</update_rate>
+      <visualize>true</visualize>
+      <topic>camera</topic>
+      <gz_frame_id>camera_link</gz_frame_id>
+    </sensor>
+  </gazebo>
+```
+
+```python
+    # Node to bridge /cmd_vel and /odom
+    gz_bridge_node = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
+            "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
+            "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
+            #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
+            #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
+            "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
+            "/imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
+            "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
+            "/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
+            "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
+            "/camera/depth_image@sensor_msgs/msg/Image@gz.msgs.Image",
+            "/camera/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
+        ],
+        output="screen",
+        parameters=[
+            {'use_sim_time': LaunchConfiguration('use_sim_time')},
+        ]
+    )
+```
+
+![alt text][image21]
 
 
-Reload URDF:
+```xml
+        <optical_frame_id>camera_link</optical_frame_id>
+```
 
-david@david-ubuntu24:~$ ros2 param set /robot_state_publisher robot_description "$(xacro $(ros2 pkg prefix bme_gazebo_sensors)/share/bme_gazebo_sensors/urdf/mogi_bot.urdf)"
-Set parameter successful
+![alt text][image22]
 
-OpenCV
+![alt text][image23]
+
+
+> Gazebo support many more different sensors that we won't cover in this lesson, you can find more examples [on the following link](https://github.com/gazebosim/gz-sim/tree/gz-sim8/examples/worlds).
+
+# Image processing with OpenCV
 
 sudo apt install ros-jazzy-cv-bridge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
