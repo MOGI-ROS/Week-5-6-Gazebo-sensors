@@ -7,22 +7,29 @@ from geometry_msgs.msg import Twist
 from tf_transformations import euler_from_quaternion
 import math
 
-def haversine(lat1, lon1, lat2, lon2):
+def haversine(lat1_deg, lon1_deg, lat2_deg, lon2_deg):
+    # 0. Radius of earth in km
+    R = 6378.137
+    # 1. Convert from degrees to radians
+    lat1 = math.radians(lat1_deg)
+    lon1 = math.radians(lon1_deg)
+    lat2 = math.radians(lat2_deg)
+    lon2 = math.radians(lon2_deg)
 
-    # Calculate distance
-    R = 6378.137 # Radius of earth in km
-    dLat = lat2 * math.pi / 180 - lat1 * math.pi / 180
-    dLon = lon2 * math.pi / 180 - lon1 * math.pi / 180
-    a = math.sin(dLat/2) * math.sin(dLat/2) + math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) * math.sin(dLon/2) * math.sin(dLon/2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    d = R * c * 1000 # in meters
+    # 2. Haversine formula for distance
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
 
-    # Calculate heading
-    y = math.sin(dLon) * math.cos(dLon)
-    x = math.cos(lat1 * math.pi / 180) * math.sin(lat2 * math.pi / 180) - math.sin(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) * math.cos(dLon)
-    bearing = -math.atan2(y,x)
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+    distance_m = R * c * 1000
 
-    return d, bearing
+    # 3. Initial bearing calculation (forward azimuth)
+    y = math.sin(dlon) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    bearing_rad = math.atan2(y, x)  # range -π to +π
+
+    return distance_m, bearing_rad
 
 class GPSWaypointFollower(Node):
     def __init__(self):
@@ -67,17 +74,20 @@ class GPSWaypointFollower(Node):
 
             distance, bearing = haversine(self.latitude, self.longitude, self.waypoints[self.waypoint_index][0], self.waypoints[self.waypoint_index][1])
 
-            # calculate heading error from yaw and bearing
-            heading_error = bearing - (self.yaw - 1.5707)
+            # Calculate the heading error from robot's yaw angle and bearing from the GPS coordinates
+            # In ROS, the default convention for rotations around the z-axis follows the right-hand rule
+            # Consequently, rotating clockwise corresponds to a negative yaw change.
+            # In traditional navigation, bearing is measured clockwise from North (i.e., 0° = North, 90° = East, etc.).
+            # In that system, turning clockwise makes the bearing angle increase.
+            # Also robot faces to the east when it starts, so we need to add pi/2 offset to the yaw angle
+            heading_error =  -1 * bearing - (self.yaw - math.pi/2)
                     
             if heading_error > math.pi:
                 heading_error = heading_error - (2 * math.pi) 
             if heading_error < -math.pi:
                 heading_error = heading_error + (2 * math.pi)
         
-            #rospy.loginfo("Distance: %.3f m, heading error: %.3f rad." % (distance, heading_error))
             self.get_logger().info(f'Distance: {distance:.2f} m, heading error: {heading_error:.3f}')
-            #rospy.loginfo("Bearing: %.3f rad, yaw: %.3f rad, error: %.3f rad" % (bearing, yaw, headingError))
 
             # Heading error, threshold is 0.03 rad
             if abs(heading_error) > 0.03:
