@@ -86,6 +86,15 @@
     </sensor>
   </gazebo>
 
+  <gazebo reference="navsat_link">
+    <sensor name="navsat" type="navsat">
+      <always_on>1</always_on>
+      <update_rate>1</update_rate>
+      <topic>navsat</topic>
+      <gz_frame_id>navsat_link</gz_frame_id>
+    </sensor>
+  </gazebo>
+
   <gazebo reference="scan_link">
     <sensor name="gpu_lidar" type="gpu_lidar">
       <update_rate>10</update_rate>
@@ -121,16 +130,6 @@
       </lidar>
       <always_on>1</always_on>
       <visualize>true</visualize>
-    </sensor>
-
-  </gazebo>
-
-  <gazebo reference="navsat_link">
-    <sensor name="navsat" type="navsat">
-      <always_on>1</always_on>
-      <update_rate>1</update_rate>
-      <topic>navsat</topic>
-      <gz_frame_id>navsat_link</gz_frame_id>
     </sensor>
   </gazebo>
 
