@@ -14,7 +14,7 @@ class ImageSubscriber(Node):
         # Create a subscriber with a queue size of 1 to only keep the last frame
         self.subscription = self.create_subscription(
             Image,
-            'camera/image',  # Replace with your topic name
+            'camera/image',
             self.image_callback,
             1  # Queue size of 1
         )
@@ -120,7 +120,6 @@ class ImageSubscriber(Node):
             cv2.line(crosshairMask,(int(cols/2),0),(int(cols/2),rows),(255,0,0),10)
 
             # Chase the ball
-            #print(abs(cols - cx), cx, cols)
             if abs(cols/2 - cx) > 20:
                 msg.linear.x = 0.0
                 if cols/2 > cx:
@@ -176,13 +175,16 @@ class ImageSubscriber(Node):
             x_offset += size[0] + x_base_offset
 
         return img
-    
+
     def stop(self):
         """Stop the node and the spin thread."""
         self.running = False
         self.spin_thread.join()
 
 def main(args=None):
+
+    print("OpenCV version: %s" % cv2.__version__)
+
     rclpy.init(args=args)
     node = ImageSubscriber()
     
