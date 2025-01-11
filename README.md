@@ -23,6 +23,11 @@
 [image21]: ./assets/rgbd-camera.png "RGBD Camera"
 [image22]: ./assets/depth-cloud.png "RGBD Camera"
 [image23]: ./assets/depth-cloud-1.png "RGBD Camera"
+[image24]: ./assets/depth-image.png "Depth image"
+[image25]: ./assets/opencv.png "OpenCV"
+[image26]: ./assets/red-ball.png "Red ball in Gazebo"
+[image27]: ./assets/opencv-1.png "OpenCV"
+[image28]: ./assets/opencv-2.png "OpenCV"
 
 # Week 5-6: Gazebo sensors
 
@@ -100,6 +105,20 @@ Let's see what will we do with the existing files and folders:
 - `urdf`: The URDF models of our robot, we'll extend the `mogi_bot.urdf` and `gazebo` files through this lesson
 - `worlds`: default Gazebo worlds that we'll use in the simulations.
 
+We have another package `bme_gazebo_sensors_py` for our python scripts:
+```bash
+.
+├── bme_gazebo_sensors_py
+│   ├── gps_waypoint_follower.py
+│   ├── haversine_test.py
+│   ├── image_republisher.py
+│   └── __init__.py
+├── package.xml
+├── resource
+│   └── bme_gazebo_sensors_py
+├── setup.cfg
+└── setup.py
+```
 
 ## Test the starter package
 
@@ -972,10 +991,14 @@ ros2 launch bme_gazebo_sensors spawn_robot.launch.py
 ```
 ![alt text][image19]
 
+We can also increase the decay time just as we did with the 2D points.
+
 ![alt text][image20]
 
 
 # RGBD Camera
+
+Another way to get 3D pointclouds around the robot is using an RGBD camera which can tell not just the color but also the depth of every single pixel. To add an RGBD camera let's replace the conventional camera with this one:
 
 ```xml
   <gazebo reference="camera_link">
@@ -1000,6 +1023,14 @@ ros2 launch bme_gazebo_sensors spawn_robot.launch.py
     </sensor>
   </gazebo>
 ```
+
+And let's forward 2 topics with the `parameter_bridge`:
+- the `/camera/depth_image` which provides a grayscale camera stream where the grayscale values correspond to the distance of the individual pixels. RViz is able to render depth image topic and the color image topic together as a depth cloud.
+![alt text][image24]
+
+- the `/camera/points` which is a 3D pointcloud, the same type as the 3D lidar's point cloud. We can visualize it in RViz just as any point clouds.
+
+Let's add the topics to the parameter bridge:
 
 ```python
     # Node to bridge /cmd_vel and /odom
@@ -1028,14 +1059,25 @@ ros2 launch bme_gazebo_sensors spawn_robot.launch.py
     )
 ```
 
+Rebuild the workspace and let's start the simulation:
+```bash
+ros2 launch bme_gazebo_sensors spawn_robot.launch.py
+```
+
 ![alt text][image21]
 
+
+The orientation of 3D point cloud isn't correct because it's interpreted in the `camera_link_optical` frame, let's change the Gazebo plugin a little bit:
 
 ```xml
         <optical_frame_id>camera_link</optical_frame_id>
 ```
 
+After rebuild we can try it out:
+
 ![alt text][image22]
+
+Just as we saw before we can adjust the decay time to keep rendering the previous points:
 
 ![alt text][image23]
 
@@ -1044,10 +1086,367 @@ ros2 launch bme_gazebo_sensors spawn_robot.launch.py
 
 # Image processing with OpenCV
 
-sudo apt install ros-jazzy-cv-bridge
+In this last chapter we'll learn how to implement our own node for image processing using ROS and OpenCV.
+First, let's switch back to a conventional camera and  create the new node within the `bme_gazebo_sensors_py` package.
 
+I'll name it `chase_the_ball.py` because it will make our robot following a simulated red ball. But as the first step we just write a node that subscribes to the `/camera/image` topic, converts it to OpenCV compatible frame and dispays it using OpenCV:
 
+```python
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+from geometry_msgs.msg import Twist
+import cv2
+import numpy as np
+import threading
 
+class ImageSubscriber(Node):
+    def __init__(self):
+        super().__init__('image_subscriber')
+        
+        # Create a subscriber with a queue size of 1 to only keep the last frame
+        self.subscription = self.create_subscription(
+            Image,
+            'camera/image',
+            self.image_callback,
+            1  # Queue size of 1
+        )
+
+        self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
+        
+        # Initialize CvBridge
+        self.bridge = CvBridge()
+        
+        # Variable to store the latest frame
+        self.latest_frame = None       
+
+        # Flag to control the display loop
+        self.running = True 
+
+    def image_callback(self, msg):
+        """Callback function to receive and store the latest frame."""
+        # Convert ROS Image message to OpenCV format and store it
+        self.latest_frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+
+    def display_image(self):
+        """Main loop to process and display the latest frame."""
+        # Create a single OpenCV window
+        cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("frame", 800,600)
+
+        while rclpy.ok():
+            # Check if there is a new frame available
+            if self.latest_frame is not None:
+
+                # Process the current image
+                self.process_image(self.latest_frame)
+
+                # Show the latest frame
+                cv2.imshow("frame", self.latest_frame)
+                self.latest_frame = None  # Clear the frame after displaying
+
+            # Check for quit key
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                self.running = False
+                break
+
+            rclpy.spin_once(self, timeout_sec=0.05)
+
+        # Close OpenCV window after quitting
+        cv2.destroyAllWindows()
+        self.running = False
+
+    def process_image(self, img):
+        """Image processing task."""
+        return
+
+def main(args=None):
+
+    print("OpenCV version: %s" % cv2.__version__)
+
+    rclpy.init(args=args)
+    node = ImageSubscriber()
+    
+    try:
+        node.display_image()  # Run the display loop
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+```
+
+> We can quit the node if we press the `q` key on the OpenCV window!
+
+You have to install OpenCV for your python using `pip` or `pipx` depending your setup for python virtual environments, during these lessons I'm using OpenCV version 4.6.0. You also have to install the ROS-OpenCV bridge with `sudo apt install ros-jazzy-cv-bridge`.
+
+When everything is installed we have to add the new node to `entry_points` of the `setup.py`:
+
+```python
+    entry_points={
+        'console_scripts': [
+            'image_republisher = bme_gazebo_sensors_py.image_republisher:main',
+            'gps_waypoint_follower = bme_gazebo_sensors_py.gps_waypoint_follower:main',
+            'chase_the_ball = bme_gazebo_sensors_py.chase_the_ball:main',
+        ],
+    },
+```
+
+Let's try it out after building the workspace, first we start the simulation then in another terminal we run the new node:
+```bash
+ros2 run bme_gazebo_sensors_py chase_the_ball
+```
+
+![alt text][image25]
+
+As you can see the `process_image()` function is now just a placeholder and we'll start implementing more features within this function later, but first let's extend the node with better handling of the subscription to the image topic. If `process_image()` will take more time to run it will also block the execution of `rclpy.spin_once(self, timeout_sec=0.05)` that is needed to trigger the `image_callback()`. So let's move the spin functionality to a separate thread:
+
+Let's change the `__init__()` function first:
+```python
+
+```
+
+and then add the `spin_thread_func()` function and also implement a thread lock in `image_callback()`:
+
+```python
+    def spin_thread_func(self):
+        """Separate thread function for rclpy spinning."""
+        while rclpy.ok() and self.running:
+            rclpy.spin_once(self, timeout_sec=0.05)
+
+    def image_callback(self, msg):
+        """Callback function to receive and store the latest frame."""
+        # Convert ROS Image message to OpenCV format and store it
+        with self.frame_lock:
+            self.latest_frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+```
+
+Obviously we don't need `rclpy.spin_once(self, timeout_sec=0.05)` anymore within `display_image()`!
+
+Let's add a `stop()` function, too, to join the therads when we stop the node:
+
+```python
+    def stop(self):
+        """Stop the node and the spin thread."""
+        self.running = False
+        self.spin_thread.join()
+```
+
+And we'll call this `stop()` function when we stop the node in the `main()` function:
+```python
+def main(args=None):
+    rclpy.init(args=args)
+    node = ImageSubscriber()
+    
+    try:
+        node.display_image()  # Run the display loop
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.stop()  # Ensure the spin thread and node stop properly
+        node.destroy_node()
+        rclpy.shutdown()
+```
+
+Let's rebuild the workspace and try the node! We shouldn't see any difference at this point, but the image callback is triggered by a separate thread now!
+
+Now let's work on the image processing:
+
+```python
+    def process_image(self, img):
+        """Image processing task."""
+        msg = Twist()
+        msg.linear.x = 0.0
+        msg.linear.y = 0.0
+        msg.linear.z = 0.0
+        msg.angular.x = 0.0
+        msg.angular.y = 0.0
+        msg.angular.z = 0.0
+
+        rows,cols = img.shape[:2]
+
+        R,G,B = self.convert2rgb(img)
+
+        redMask = self.threshold_binary(R, (220, 255))
+        stackedMask = np.dstack((redMask, redMask, redMask))
+        contourMask = stackedMask.copy()
+        crosshairMask = stackedMask.copy()
+
+        # return value of findContours depends on OpenCV version
+        (contours, hierarchy) = cv2.findContours(redMask.copy(), 1, cv2.CHAIN_APPROX_NONE)
+
+        # Find the biggest contour (if detected)
+        if len(contours) > 0:
+            
+            c = max(contours, key=cv2.contourArea)
+            M = cv2.moments(c)
+
+            # Make sure that "m00" won't cause ZeroDivisionError: float division by zero
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+            else:
+                cx, cy = 0, 0
+
+            # Show contour and centroid
+            cv2.drawContours(contourMask, contours, -1, (0,255,0), 10)
+            cv2.circle(contourMask, (cx, cy), 5, (0, 255, 0), -1)
+
+            # Show crosshair and difference from middle point
+            cv2.line(crosshairMask,(cx,0),(cx,rows),(0,0,255),10)
+            cv2.line(crosshairMask,(0,cy),(cols,cy),(0,0,255),10)
+            cv2.line(crosshairMask,(int(cols/2),0),(int(cols/2),rows),(255,0,0),10)
+
+        # Return processed frames
+        return redMask, contourMask, crosshairMask
+
+    # Convert to RGB channels
+    def convert2rgb(self, img):
+        R = img[:, :, 2]
+        G = img[:, :, 1]
+        B = img[:, :, 0]
+
+        return R, G, B
+
+    # Apply threshold and result a binary image
+    def threshold_binary(self, img, thresh=(200, 255)):
+        binary = np.zeros_like(img)
+        binary[(img >= thresh[0]) & (img <= thresh[1])] = 1
+
+        return binary*255
+```
+
+Let's handle the return values of the `process_image()` and display them within the `display_image()`:
+
+```python
+    def display_image(self):
+        """Main loop to process and display the latest frame."""
+        # Create a single OpenCV window
+        cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("frame", 800,600)
+
+        while rclpy.ok():
+            # Check if there is a new frame available
+            if self.latest_frame is not None:
+
+                # Process the current image
+                mask, contour, crosshair = self.process_image(self.latest_frame)
+
+                # Show the latest frame
+                cv2.imshow("frame", self.latest_frame)
+                cv2.imshow("mask", mask)
+                cv2.imshow("contour", contour)
+                cv2.imshow("crosshair", crosshair)
+                self.latest_frame = None  # Clear the frame after displaying
+
+            # Check for quit key
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                self.running = False
+                break
+
+        # Close OpenCV window after quitting
+        cv2.destroyAllWindows()
+        self.running = False
+```
+
+This time the node will open 4 OpenCV windows and try to find the red ball on the image. Let's add a red ball to the simulation first using the `Resource Spawner` plugin of Gazebo:
+![alt text][image26]
+
+Then let's see the new windows of our node:
+
+![alt text][image27]
+
+Handling many OpenCV windows can be uncomfortable, so before we start following the ball, let's overlay the output of the image processing on the camera frame:
+
+```python
+    # Add small images to the top row of the main image
+    def add_small_pictures(self, img, small_images, size=(160, 120)):
+
+        x_base_offset = 40
+        y_base_offset = 10
+
+        x_offset = x_base_offset
+        y_offset = y_base_offset
+
+        for small in small_images:
+            small = cv2.resize(small, size)
+            if len(small.shape) == 2:
+                small = np.dstack((small, small, small))
+
+            img[y_offset: y_offset + size[1], x_offset: x_offset + size[0]] = small
+
+            x_offset += size[0] + x_base_offset
+
+        return img
+```
+
+Let's modify the `display_image()` function:
+
+```python
+    def display_image(self):
+        """Main loop to process and display the latest frame."""
+        # Create a single OpenCV window
+        cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("frame", 800,600)
+
+        while rclpy.ok():
+            # Check if there is a new frame available
+            if self.latest_frame is not None:
+
+                # Process the current image
+                mask, contour, crosshair = self.process_image(self.latest_frame)
+
+                # Add processed images as small images on top of main image
+                result = self.add_small_pictures(self.latest_frame, [mask, contour, crosshair])
+
+                # Show the latest frame
+                cv2.imshow("frame", result)
+                self.latest_frame = None  # Clear the frame after displaying
+
+            # Check for quit key
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                self.running = False
+                break
+
+        # Close OpenCV window after quitting
+        cv2.destroyAllWindows()
+        self.running = False
+```
+
+![alt text][image28]
+
+The last step is to add the following feature to the `process_image()` function righ after creating the crosshair image:
+
+```python
+...
+            # Chase the ball
+            if abs(cols/2 - cx) > 20:
+                msg.linear.x = 0.0
+                if cols/2 > cx:
+                    msg.angular.z = 0.2
+                else:
+                    msg.angular.z = -0.2
+
+            else:
+                msg.linear.x = 0.2
+                msg.angular.z = 0.0
+
+        else:
+            msg.linear.x = 0.0
+            msg.angular.z = 0.0
+
+        # Publish cmd_vel
+        self.publisher.publish(msg)
+...
+```
+
+And now the robot is able to follow the red ball in the Gazebo simulation:
+
+<a href="https://youtu.be/ELwRqeNR_NA"><img width="800" src="./assets/youtube-gazebo-1.png"></a>  
 
 
 
