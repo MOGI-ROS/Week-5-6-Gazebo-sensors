@@ -105,43 +105,9 @@ def generate_launch_description():
             "/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
             "/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry",
             "/joint_states@sensor_msgs/msg/JointState@gz.msgs.Model",
-            #"/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
-            #"/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
-            "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
-            "/imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
-            "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
-            "/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan",
-            "/scan/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
-            "/camera/depth_image@sensor_msgs/msg/Image@gz.msgs.Image",
-            "/camera/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
+            "/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
         ],
         output="screen",
-        parameters=[
-            {'use_sim_time': LaunchConfiguration('use_sim_time')},
-        ]
-    )
-
-    # Node to bridge camera image with image_transport and compressed_image_transport
-    gz_image_bridge_node = Node(
-        package="ros_gz_image",
-        executable="image_bridge",
-        arguments=[
-            "/camera/image",
-        ],
-        output="screen",
-        parameters=[
-            {'use_sim_time': LaunchConfiguration('use_sim_time'),
-             'camera.image.compressed.jpeg_quality': 75},
-        ],
-    )
-
-    # Relay node to republish /camera/camera_info to /camera/image/camera_info
-    relay_camera_info_node = Node(
-        package='topic_tools',
-        executable='relay',
-        name='relay_camera_info',
-        output='screen',
-        arguments=['camera/camera_info', 'camera/image/camera_info'],
         parameters=[
             {'use_sim_time': LaunchConfiguration('use_sim_time')},
         ]
@@ -168,25 +134,6 @@ def generate_launch_description():
         name='mogi_trajectory_server'
     )
 
-    ekf_node = Node(
-        package='robot_localization',
-        executable='ekf_node',
-        name='ekf_filter_node',
-        output='screen',
-        parameters=[
-            os.path.join(pkg_bme_gazebo_sensors, 'config', 'ekf.yaml'),
-            {'use_sim_time': LaunchConfiguration('use_sim_time')},
-             ]
-    )
-
-    trajectory_odom_topic_node = Node(
-        package='mogi_trajectory_server',
-        executable='mogi_trajectory_server_topic_based',
-        name='mogi_trajectory_server_odom_topic',
-        parameters=[{'trajectory_topic': 'trajectory_raw'},
-                    {'odometry_topic': 'odom'}]
-    )
-
     launchDescriptionObject = LaunchDescription()
 
     launchDescriptionObject.add_action(rviz_launch_arg)
@@ -201,11 +148,7 @@ def generate_launch_description():
     launchDescriptionObject.add_action(rviz_node)
     launchDescriptionObject.add_action(spawn_urdf_node)
     launchDescriptionObject.add_action(gz_bridge_node)
-    launchDescriptionObject.add_action(gz_image_bridge_node)
-    launchDescriptionObject.add_action(relay_camera_info_node)
     launchDescriptionObject.add_action(robot_state_publisher_node)
     launchDescriptionObject.add_action(trajectory_node)
-    launchDescriptionObject.add_action(ekf_node)
-    launchDescriptionObject.add_action(trajectory_odom_topic_node)
 
     return launchDescriptionObject
