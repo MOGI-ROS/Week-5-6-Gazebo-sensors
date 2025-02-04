@@ -1087,7 +1087,13 @@ Just as we saw before we can adjust the decay time to keep rendering the previou
 # Image processing with OpenCV
 
 In this last chapter we'll learn how to implement our own node for image processing using ROS and OpenCV.
-First, let's switch back to a conventional camera and  create the new node within the `bme_gazebo_sensors_py` package.
+First, let's switch back to a conventional camera and create the new node within the `bme_gazebo_sensors_py` package.
+
+> If we want to use OpenCV and other python modules from a python virtual environment, we'll have to add the following to the `setup.cfg` file inside our python package:
+> ```ini
+> [build_scripts]
+> executable = /usr/bin/env python3
+> ```
 
 I'll name it `chase_the_ball.py` because it will make our robot following a simulated red ball. But as the first step we just write a node that subscribes to the `/camera/image` topic, converts it to OpenCV compatible frame and dispays it using OpenCV:
 
