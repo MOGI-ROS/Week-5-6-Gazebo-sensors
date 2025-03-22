@@ -1211,9 +1211,34 @@ ros2 run bme_gazebo_sensors_py chase_the_ball
 
 As you can see the `process_image()` function is now just a placeholder and we'll start implementing more features within this function later, but first let's extend the node with better handling of the subscription to the image topic. If `process_image()` will take more time to run it will also block the execution of `rclpy.spin_once(self, timeout_sec=0.05)` that is needed to trigger the `image_callback()`. So let's move the spin functionality to a separate thread:
 
-Let's change the `__init__()` function first:
+Let's change the `__init__()` constructor first:
 ```python
+    def __init__(self):
+        super().__init__('image_subscriber')
+        
+        # Create a subscriber with a queue size of 1 to only keep the last frame
+        self.subscription = self.create_subscription(
+            Image,
+            'camera/image',
+            self.image_callback,
+            1  # Queue size of 1
+        )
 
+        self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
+        
+        # Initialize CvBridge
+        self.bridge = CvBridge()
+        
+        # Variable to store the latest frame
+        self.latest_frame = None
+        self.frame_lock = threading.Lock()  # Lock to ensure thread safety
+        
+        # Flag to control the display loop
+        self.running = True
+
+        # Start a separate thread for spinning (to ensure image_callback keeps receiving new frames)
+        self.spin_thread = threading.Thread(target=self.spin_thread_func)
+        self.spin_thread.start()
 ```
 
 and then add the `spin_thread_func()` function and also implement a thread lock in `image_callback()`:
@@ -1231,7 +1256,7 @@ and then add the `spin_thread_func()` function and also implement a thread lock 
             self.latest_frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 ```
 
-Obviously we don't need `rclpy.spin_once(self, timeout_sec=0.05)` anymore within `display_image()`!
+Obviously, we don't need `rclpy.spin_once(self, timeout_sec=0.05)` anymore within `display_image()`!
 
 Let's add a `stop()` function, too, to join the therads when we stop the node:
 
@@ -1258,7 +1283,9 @@ def main(args=None):
         rclpy.shutdown()
 ```
 
-Let's rebuild the workspace and try the node! We shouldn't see any difference at this point, but the image callback is triggered by a separate thread now!
+Let's rebuild the workspace and try the node! We shouldn't see any difference at this point, but the image callback is triggered on a separate thread now!
+
+---
 
 Now let's work on the image processing:
 
